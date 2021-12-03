@@ -1,0 +1,5 @@
+.libs
+Makefile
+libzfs_input_check
+libzfs_input_check.o
+Makefile.in

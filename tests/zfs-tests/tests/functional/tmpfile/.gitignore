@@ -1,0 +1,13 @@
+.libs
+Makefile
+tmpfile_001_pos
+tmpfile_001_pos.o
+tmpfile_002_pos
+tmpfile_002_pos.o
+tmpfile_003_pos
+tmpfile_003_pos.o
+tmpfile_stat_mode
+tmpfile_stat_mode.o
+tmpfile_test
+tmpfile_test.o
+Makefile.in

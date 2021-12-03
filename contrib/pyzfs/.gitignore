@@ -1,0 +1,5 @@
+Makefile
+build
+pyzfs.egg-info
+setup.py
+Makefile.in

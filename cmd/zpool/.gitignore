@@ -1,0 +1,8 @@
+.libs
+Makefile
+zpool
+zpool_iter.o
+zpool_main.o
+zpool_util.o
+zpool_vdev.o
+Makefile.in

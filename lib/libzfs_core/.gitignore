@@ -1,0 +1,5 @@
+.libs
+Makefile
+libzfs_core.lo
+libzfs_core.o
+Makefile.in

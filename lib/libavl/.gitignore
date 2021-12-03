@@ -1,0 +1,5 @@
+.libs
+Makefile
+avl.lo
+avl.o
+Makefile.in

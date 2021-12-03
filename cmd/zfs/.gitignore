@@ -1,0 +1,7 @@
+.libs
+Makefile
+zfs
+zfs_iter.o
+zfs_main.o
+zfs_project.o
+Makefile.in

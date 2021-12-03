@@ -1,0 +1,5 @@
+.libs
+Makefile
+randfree_file
+randfree_file.o
+Makefile.in

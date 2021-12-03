@@ -1,0 +1,5 @@
+.libs
+Makefile
+chg_usr_exec
+chg_usr_exec.o
+Makefile.in

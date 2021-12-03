@@ -1,0 +1,5 @@
+.libs
+Makefile
+randwritecomp
+randwritecomp.o
+Makefile.in

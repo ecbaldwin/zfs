@@ -1,0 +1,5 @@
+.libs
+Makefile
+mmap_libaio
+mmap_libaio.o
+Makefile.in

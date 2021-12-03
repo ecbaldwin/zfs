@@ -1,0 +1,9 @@
+.libs
+Makefile
+edonr_test
+edonr_test.o
+sha2_test
+sha2_test.o
+skein_test
+skein_test.o
+Makefile.in

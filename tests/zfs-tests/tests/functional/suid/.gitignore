@@ -1,0 +1,5 @@
+.libs
+Makefile
+suid_write_to_file
+suid_write_to_file.o
+Makefile.in

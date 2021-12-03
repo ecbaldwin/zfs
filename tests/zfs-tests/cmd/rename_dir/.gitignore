@@ -1,0 +1,5 @@
+.libs
+Makefile
+rename_dir
+rename_dir.o
+Makefile.in

@@ -1,0 +1,5 @@
+.libs
+Makefile
+ztest
+ztest.o
+Makefile.in

@@ -1,0 +1,5 @@
+.libs
+Makefile
+zvol_id
+zvol_id_main.o
+Makefile.in

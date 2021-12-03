@@ -1,0 +1,5 @@
+.libs
+Makefile
+dir_rd_update
+dir_rd_update.o
+Makefile.in

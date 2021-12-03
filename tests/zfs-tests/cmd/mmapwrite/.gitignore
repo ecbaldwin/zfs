@@ -1,0 +1,5 @@
+.libs
+Makefile
+mmapwrite
+mmapwrite.o
+Makefile.in

@@ -1,0 +1,5 @@
+.libs
+Makefile
+cp_files
+cp_files.o
+Makefile.in

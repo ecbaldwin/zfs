@@ -1,0 +1,5 @@
+.libs
+Makefile
+nvlist_to_lua
+nvlist_to_lua.o
+Makefile.in

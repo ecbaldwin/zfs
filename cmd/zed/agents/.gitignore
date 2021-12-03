@@ -1,0 +1,8 @@
+.deps
+.dirstamp
+fmd_api.o
+fmd_serd.o
+zfs_agents.o
+zfs_diagnosis.o
+zfs_mod.o
+zfs_retire.o

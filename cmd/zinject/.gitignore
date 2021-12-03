@@ -1,0 +1,6 @@
+.libs
+Makefile
+translate.o
+zinject
+zinject.o
+Makefile.in

@@ -1,0 +1,5 @@
+.libs
+Makefile
+mount.zfs
+mount_zfs.o
+Makefile.in

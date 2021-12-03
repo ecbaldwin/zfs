@@ -1,0 +1,5 @@
+.libs
+Makefile
+hkdf_test
+hkdf_test.o
+Makefile.in

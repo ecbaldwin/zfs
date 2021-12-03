@@ -1,0 +1,5 @@
+.libs
+Makefile
+rdwr_efi.lo
+rdwr_efi.o
+Makefile.in

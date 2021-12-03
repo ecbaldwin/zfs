@@ -1,0 +1,5 @@
+.libs
+Makefile
+file_write
+file_write.o
+Makefile.in

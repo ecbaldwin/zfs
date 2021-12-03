@@ -1,0 +1,5 @@
+.libs
+Makefile
+many_fds
+many_fds.o
+Makefile.in

@@ -1,0 +1,5 @@
+.libs
+Makefile
+file_check
+file_check.o
+Makefile.in

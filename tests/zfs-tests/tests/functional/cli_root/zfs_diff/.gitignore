@@ -1,0 +1,5 @@
+.libs
+Makefile
+socket
+socket.o
+Makefile.in

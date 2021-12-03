@@ -1,0 +1,13 @@
+META.orig
+Makefile
+autom4te.cache
+bin
+config.log
+config.status
+libtool
+stamp-h1
+zfs-0.8.3
+zfs.release
+zfs_config.h
+Makefile.in
+zfs_config.h.in~

@@ -1,0 +1,15 @@
+.libs
+Makefile
+fnvpair.lo
+fnvpair.o
+libnvpair.lo
+libnvpair.o
+libnvpair_json.lo
+libnvpair_json.o
+nvpair.lo
+nvpair.o
+nvpair_alloc_fixed.lo
+nvpair_alloc_fixed.o
+nvpair_alloc_system.lo
+nvpair_alloc_system.o
+Makefile.in

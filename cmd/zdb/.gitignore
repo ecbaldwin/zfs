@@ -1,0 +1,6 @@
+.libs
+Makefile
+zdb
+zdb.o
+zdb_il.o
+Makefile.in

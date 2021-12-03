@@ -1,0 +1,5 @@
+.libs
+Makefile
+truncate_test
+truncate_test.o
+Makefile.in

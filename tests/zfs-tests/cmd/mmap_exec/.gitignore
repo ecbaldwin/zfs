@@ -1,0 +1,5 @@
+.libs
+Makefile
+mmap_exec
+mmap_exec.o
+Makefile.in

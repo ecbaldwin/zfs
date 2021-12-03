@@ -1,0 +1,5 @@
+.libs
+Makefile
+readmmap
+readmmap.o
+Makefile.in

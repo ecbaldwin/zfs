@@ -1,0 +1,9 @@
+.libs
+Makefile
+libshare.lo
+libshare.o
+nfs.lo
+nfs.o
+smb.lo
+smb.o
+Makefile.in

@@ -1,0 +1,12 @@
+.libs
+Makefile
+zed
+zed.o
+zed_conf.o
+zed_disk_event.o
+zed_event.o
+zed_exec.o
+zed_file.o
+zed_log.o
+zed_strings.o
+Makefile.in

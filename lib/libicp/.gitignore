@@ -1,0 +1,12 @@
+.libs
+Makefile
+algs
+api
+asm-x86_64
+core
+illumos-crypto.lo
+illumos-crypto.o
+io
+os
+spi
+Makefile.in

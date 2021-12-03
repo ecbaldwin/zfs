@@ -1,0 +1,6 @@
+.libs
+Makefile
+raidz_bench.o
+raidz_test
+raidz_test.o
+Makefile.in

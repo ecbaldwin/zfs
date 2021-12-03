@@ -1,0 +1,7 @@
+.libs
+Makefile
+u8_textprep.lo
+u8_textprep.o
+uconv.lo
+uconv.o
+Makefile.in

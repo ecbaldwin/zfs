@@ -1,0 +1,5 @@
+.libs
+Makefile
+mkfiles
+mkfiles.o
+Makefile.in
