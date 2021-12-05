@@ -249,6 +249,19 @@ zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 	ZPL_VERIFY_ZP(zp);
 	rw_enter(&zp->z_xattr_lock, RW_READER);
 
+	/* When xf->buf is NULL only calculate the required size. */
+	char *name = "user.essence";
+	int name_len = strlen(name);
+	if (xf->buf) {
+		if (xf->offset + name_len + 1 > xf->size)
+			return (-ERANGE);
+
+		memcpy(xf->buf + xf->offset, name, name_len);
+		xf->buf[xf->offset + name_len] = '\0';
+	}
+
+	xf->offset += (name_len + 1);
+
 	if (zfsvfs->z_use_sa && zp->z_is_sa) {
 		error = zpl_xattr_list_sa(&xf);
 		if (error)
