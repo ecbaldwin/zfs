@@ -88,10 +88,10 @@ else
 fi
 
 # Paths to what we need
-ZFS="/usr/local/sbin/zfs"
-ZED="/usr/local/sbin/zed"
-ZPOOL="/usr/local/sbin/zpool"
-ZPOOL_CACHE="/usr/local/etc/zfs/zpool.cache"
+ZFS="/sbin/zfs"
+ZED="/usr/sbin/zed"
+ZPOOL="/sbin/zpool"
+ZPOOL_CACHE="/etc/zfs/zpool.cache"
 
 # Sensible defaults
 ZFS_MOUNT='yes'
@@ -100,8 +100,8 @@ ZFS_UNMOUNT='yes'
 export ZFS ZED ZPOOL ZPOOL_CACHE ZFS_MOUNT ZFS_UNMOUNT
 
 # Source zfs configuration, overriding the defaults
-if [ -f /etc/sysconfig/zfs ]; then
-	. /etc/sysconfig/zfs
+if [ -f /etc/default/zfs ]; then
+	. /etc/default/zfs
 fi
 
 # ----------------------------------------------------
