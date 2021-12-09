@@ -1,0 +1,30 @@
+Description: Fix recv -s compat issue with 2.x kernel driver
+ The action handle should be set to null so that the user space recv
+ is forwardly compatible with 2.x kernel ZFS driver to allow the
+ recv -s option to work.
+Author: Colin Ian King <colin.king@canonical.com>
+Origin: ubuntu
+Forwarded: no
+Last-Update: 2021-08-16
+
+Index: zfs-linux-0.8.3/lib/libzfs/libzfs_sendrecv.c
+===================================================================
+--- zfs-linux-0.8.3.orig/lib/libzfs/libzfs_sendrecv.c
++++ zfs-linux-0.8.3/lib/libzfs/libzfs_sendrecv.c
+@@ -4799,7 +4799,6 @@ zfs_receive(libzfs_handle_t *hdl, const
+ 	char *top_zfs = NULL;
+ 	int err;
+ 	int cleanup_fd;
+-	uint64_t action_handle = 0;
+ 	struct stat sb;
+ 	char *originsnap = NULL;
+ 
+@@ -4854,7 +4853,7 @@ zfs_receive(libzfs_handle_t *hdl, const
+ 	VERIFY(cleanup_fd >= 0);
+ 
+ 	err = zfs_receive_impl(hdl, tosnap, originsnap, flags, infd, NULL, NULL,
+-	    stream_avl, &top_zfs, cleanup_fd, &action_handle, NULL, props);
++	    stream_avl, &top_zfs, cleanup_fd, NULL, NULL, props);
+ 
+ 	VERIFY(0 == close(cleanup_fd));
+ 

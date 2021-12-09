@@ -1,0 +1,52 @@
+From 43eaef6de817dab3e098488f8e02a11fe57944d0 Mon Sep 17 00:00:00 2001
+From: Paul Dagnelie <paulcd2000@gmail.com>
+Date: Wed, 27 Jan 2021 21:29:58 -0800
+Subject: [PATCH] Fix zrele race in zrele_async that can cause hang
+
+There is a race condition in zfs_zrele_async when we are checking if
+we would be the one to evict an inode. This can lead to a txg sync
+deadlock.
+
+Instead of calling into iput directly, we attempt to perform the atomic
+decrement ourselves, unless that would set the i_count value to zero.
+In that case, we dispatch a call to iput to run later, to prevent a
+deadlock from occurring.
+
+Reviewed-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Reviewed-by: Matthew Ahrens <mahrens@delphix.com>
+Signed-off-by: Paul Dagnelie <pcd@delphix.com>
+Closes #11527
+Closes #11530
+
+Origin: backport, https://github.com/openzfs/zfs/commit/43eaef6de817
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1916486
+---
+ module/zfs/zfs_vnops.c | 13 +++++++++++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+Index: zfs-linux-0.8.3/module/zfs/zfs_vnops.c
+===================================================================
+--- zfs-linux-0.8.3.orig/module/zfs/zfs_vnops.c
++++ zfs-linux-0.8.3/module/zfs/zfs_vnops.c
+@@ -996,11 +996,18 @@ zfs_iput_async(struct inode *ip)
+ 	ASSERT(atomic_read(&ip->i_count) > 0);
+ 	ASSERT(os != NULL);
+ 
+-	if (atomic_read(&ip->i_count) == 1)
++	/*
++	 * If decrementing the count would put us at 0, we can't do it inline
++	 * here, because that would be synchronous. Instead, dispatch an iput
++	 * to run later.
++	 *
++	 * For more information on the dangers of a synchronous iput, see the
++	 * header comment of this file.
++	 */
++	if (!atomic_add_unless(&ip->i_count, -1, 1)) {
+ 		VERIFY(taskq_dispatch(dsl_pool_iput_taskq(dmu_objset_pool(os)),
+ 		    (task_func_t *)iput, ip, TQ_SLEEP) != TASKQID_INVALID);
+-	else
+-		iput(ip);
++	}
+ }
+ 
+ /* ARGSUSED */

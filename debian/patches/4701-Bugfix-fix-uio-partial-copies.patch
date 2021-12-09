@@ -1,0 +1,90 @@
+From 590ababea2ed4c41ea3c769f35a5d3ae2eb13e8d Mon Sep 17 00:00:00 2001
+From: Fabio Scaccabarozzi <fsvm88@gmail.com>
+Date: Wed, 1 Apr 2020 18:48:54 +0200
+Subject: [PATCH] Bugfix/fix uio partial copies
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+In zfs_write(), the loop continues to the next iteration without
+accounting for partial copies occurring in uiomove_iov when
+copy_from_user/__copy_from_user_inatomic return a non-zero status.
+This results in "zfs: accessing past end of object..." in the
+kernel log, and the write failing.
+
+Account for partial copies and update uio struct before returning
+EFAULT, leave a comment explaining the reason why this is done.
+
+Reviewed-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Reviewed-by: ilbsmart <wgqimut@gmail.com>
+Signed-off-by: Fabio Scaccabarozzi <fsvm88@gmail.com>
+Closes #8673
+Closes #10148
+---
+ module/zcommon/zfs_uio.c | 25 +++++++++++++++++--------
+ module/zfs/zfs_vnops.c   |  9 +++++++++
+ 2 files changed, 26 insertions(+), 8 deletions(-)
+
+Index: zfs-linux-0.8.3/module/zcommon/zfs_uio.c
+===================================================================
+--- zfs-linux-0.8.3.orig/module/zcommon/zfs_uio.c
++++ zfs-linux-0.8.3/module/zcommon/zfs_uio.c
+@@ -80,22 +80,31 @@ uiomove_iov(void *p, size_t n, enum uio_
+ 				if (copy_to_user(iov->iov_base+skip, p, cnt))
+ 					return (EFAULT);
+ 			} else {
++				unsigned long b_left = 0;
+ 				if (uio->uio_fault_disable) {
+ 					if (!zfs_access_ok(VERIFY_READ,
+ 					    (iov->iov_base + skip), cnt)) {
+ 						return (EFAULT);
+ 					}
+ 					pagefault_disable();
+-					if (__copy_from_user_inatomic(p,
+-					    (iov->iov_base + skip), cnt)) {
+-						pagefault_enable();
+-						return (EFAULT);
+-					}
++					b_left =
++					    __copy_from_user_inatomic(p,
++					    (iov->iov_base + skip), cnt);
+ 					pagefault_enable();
+ 				} else {
+-					if (copy_from_user(p,
+-					    (iov->iov_base + skip), cnt))
+-						return (EFAULT);
++					b_left =
++					    copy_from_user(p,
++					    (iov->iov_base + skip), cnt);
++				}
++				if (b_left > 0) {
++					unsigned long c_bytes =
++					    cnt - b_left;
++					uio->uio_skip += c_bytes;
++					ASSERT3U(uio->uio_skip, <,
++					    iov->iov_len);
++					uio->uio_resid -= c_bytes;
++					uio->uio_loffset += c_bytes;
++					return (EFAULT);
+ 				}
+ 			}
+ 			break;
+Index: zfs-linux-0.8.3/module/zfs/zfs_vnops.c
+===================================================================
+--- zfs-linux-0.8.3.orig/module/zfs/zfs_vnops.c
++++ zfs-linux-0.8.3/module/zfs/zfs_vnops.c
+@@ -829,6 +829,15 @@ zfs_write(struct inode *ip, uio_t *uio,
+ 			uio->uio_fault_disable = B_FALSE;
+ 			if (error == EFAULT) {
+ 				dmu_tx_commit(tx);
++				/*
++				 * Account for partial writes before
++				 * continuing the loop.
++				 * Update needs to occur before the next
++				 * uio_prefaultpages, or prefaultpages may
++				 * error, and we may break the loop early.
++				 */
++				if (tx_bytes != uio->uio_resid)
++					n -= tx_bytes - uio->uio_resid;
+ 				if (uio_prefaultpages(MIN(n, max_blksz), uio)) {
+ 					break;
+ 				}

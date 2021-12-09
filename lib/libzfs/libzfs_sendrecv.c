@@ -3784,7 +3784,7 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	char errbuf[1024];
 	const char *chopprefix;
 	boolean_t newfs = B_FALSE;
-	boolean_t stream_wantsnewfs;
+	boolean_t stream_wantsnewfs, stream_resumingnewfs;
 	boolean_t newprops = B_FALSE;
 	uint64_t read_bytes = 0;
 	uint64_t errflags = 0;
@@ -3992,6 +3992,8 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	    DMU_BACKUP_FEATURE_EMBED_DATA;
 	stream_wantsnewfs = (drrb->drr_fromguid == 0 ||
 	    (drrb->drr_flags & DRR_FLAG_CLONE) || originsnap) && !resuming;
+	stream_resumingnewfs = (drrb->drr_fromguid == 0 ||
+	    (drrb->drr_flags & DRR_FLAG_CLONE) || originsnap) && resuming;
 
 	if (stream_wantsnewfs) {
 		/*
@@ -4156,7 +4158,7 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 		}
 
 		if (!flags->dryrun && zhp->zfs_type == ZFS_TYPE_FILESYSTEM &&
-		    stream_wantsnewfs) {
+		    (stream_wantsnewfs || stream_resumingnewfs)) {
 			/* We can't do online recv in this case */
 			clp = changelist_gather(zhp, ZFS_PROP_NAME, 0, 0);
 			if (clp == NULL) {
@@ -4799,7 +4801,6 @@ zfs_receive(libzfs_handle_t *hdl, const char *tosnap, nvlist_t *props,
 	char *top_zfs = NULL;
 	int err;
 	int cleanup_fd;
-	uint64_t action_handle = 0;
 	struct stat sb;
 	char *originsnap = NULL;
 
@@ -4854,7 +4855,7 @@ zfs_receive(libzfs_handle_t *hdl, const char *tosnap, nvlist_t *props,
 	VERIFY(cleanup_fd >= 0);
 
 	err = zfs_receive_impl(hdl, tosnap, originsnap, flags, infd, NULL, NULL,
-	    stream_avl, &top_zfs, cleanup_fd, &action_handle, NULL, props);
+	    stream_avl, &top_zfs, cleanup_fd, NULL, NULL, props);
 
 	VERIFY(0 == close(cleanup_fd));
 

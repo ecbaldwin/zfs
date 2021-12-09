@@ -829,6 +829,15 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 			uio->uio_fault_disable = B_FALSE;
 			if (error == EFAULT) {
 				dmu_tx_commit(tx);
+				/*
+				 * Account for partial writes before
+				 * continuing the loop.
+				 * Update needs to occur before the next
+				 * uio_prefaultpages, or prefaultpages may
+				 * error, and we may break the loop early.
+				 */
+				if (tx_bytes != uio->uio_resid)
+					n -= tx_bytes - uio->uio_resid;
 				if (uio_prefaultpages(MIN(n, max_blksz), uio)) {
 					break;
 				}
@@ -987,11 +996,18 @@ zfs_iput_async(struct inode *ip)
 	ASSERT(atomic_read(&ip->i_count) > 0);
 	ASSERT(os != NULL);
 
-	if (atomic_read(&ip->i_count) == 1)
+	/*
+	 * If decrementing the count would put us at 0, we can't do it inline
+	 * here, because that would be synchronous. Instead, dispatch an iput
+	 * to run later.
+	 *
+	 * For more information on the dangers of a synchronous iput, see the
+	 * header comment of this file.
+	 */
+	if (!atomic_add_unless(&ip->i_count, -1, 1)) {
 		VERIFY(taskq_dispatch(dsl_pool_iput_taskq(dmu_objset_pool(os)),
 		    (task_func_t *)iput, ip, TQ_SLEEP) != TASKQID_INVALID);
-	else
-		iput(ip);
+	}
 }
 
 /* ARGSUSED */
@@ -3415,8 +3431,8 @@ top:
 
 	if (mask & (ATTR_MTIME | ATTR_SIZE)) {
 		ZFS_TIME_ENCODE(&vap->va_mtime, mtime);
-		ZTOI(zp)->i_mtime = zpl_inode_timespec_trunc(vap->va_mtime,
-		    ZTOI(zp)->i_sb->s_time_gran);
+		ZTOI(zp)->i_mtime = zpl_inode_timestamp_truncate(
+		    vap->va_mtime, ZTOI(zp));
 
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MTIME(zfsvfs), NULL,
 		    mtime, sizeof (mtime));
@@ -3424,8 +3440,8 @@ top:
 
 	if (mask & (ATTR_CTIME | ATTR_SIZE)) {
 		ZFS_TIME_ENCODE(&vap->va_ctime, ctime);
-		ZTOI(zp)->i_ctime = zpl_inode_timespec_trunc(vap->va_ctime,
-		    ZTOI(zp)->i_sb->s_time_gran);
+		ZTOI(zp)->i_ctime = zpl_inode_timestamp_truncate(vap->va_ctime,
+		    ZTOI(zp));
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_CTIME(zfsvfs), NULL,
 		    ctime, sizeof (ctime));
 	}

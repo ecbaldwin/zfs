@@ -42,6 +42,8 @@ else
   do_fail "zero or three arguments required"
 fi
 
+pools=$(zpool list -H -o name || true)
+
 # For ZFSs marked "auto", a dependency is created for local-fs.target. To
 # avoid regressions, this dependency is reduced to "wants" rather than
 # "requires". **THIS MAY CHANGE**
@@ -58,10 +60,10 @@ process_line() {
   # zfs list -H -o name,...
   # fields are tab separated
   IFS="$(printf '\t')"
-  # protect against special characters in, e.g., mountpoints
-  set -f
   set -- $1
+
   dataset="${1}"
+  pool="${dataset%%/*}"
   p_mountpoint="${2}"
   p_canmount="${3}"
   p_atime="${4}"
@@ -76,6 +78,25 @@ process_line() {
 
   # Minimal pre-requisites to mount a ZFS dataset
   wants="zfs-import.target"
+
+  # If the pool is already imported, zfs-import.target is not needed.  This
+  # avoids a dependency loop on root-on-ZFS systems:
+  # systemd-random-seed.service After (via RequiresMountsFor) var-lib.mount
+  # After zfs-import.target After zfs-import-{cache,scan}.service After
+  # cryptsetup.service After systemd-random-seed.service.
+  #
+  # Pools are newline-separated and may contain spaces in their names.
+  # There is no better portable way to set IFS to just a newline.  Using
+  # $(printf '\n') doesn't work because $(...) strips trailing newlines.
+  IFS="
+"
+  for p in $pools ; do
+    if [ "$p" = "$pool" ] ; then
+      after=""
+      wants=""
+      break
+    fi
+  done
 
   # Handle encryption
   if [ -n "${p_encroot}" ] &&
@@ -119,6 +140,10 @@ ${pathdep}
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# This avoids a dependency loop involving systemd-journald.socket if this
+# dataset is a parent of the root filesystem.
+StandardOutput=null
+StandardError=null
 ExecStart=${keyloadcmd}
 ExecStop=@sbindir@/zfs unload-key '${dataset}'
 EOF
@@ -256,8 +281,87 @@ EOF
   ln -s "../${mountfile}" "${req_dir}"
 }
 
+ZPOOL_CACHE="@sysconfdir@/zfs/zpool.cache"
+PROPS="name,mountpoint,canmount,atime,relatime,devices,exec,readonly"
+PROPS="${PROPS},setuid,nbmand"
+zsys_revert_failed=0
+errfile="/tmp/zsys-revert-out.log"
+
+drop_emergency_on_failure() {
+  if [ ${zsys_revert_failed} -eq 0 ]; then
+    return
+  fi
+
+  # Drop to emergency target in case of failure after cleanup fstab mountpoints.
+  # This avoids booting and having a mix of old and new datasets, and creating directory in the wrong
+  # datasets, like /boot/grub in / which will prevent zfs to mount /boot dataset later on.
+  rm -f "${dest_norm}"/*.mount
+  ln -s /lib/systemd/system/emergency.target "${dest_norm}"/default.target
+
+  printf 'ERROR: zfs-mount-generator failed and you requested a revert:\n' > /dev/kmsg
+  cat "${errfile}" > /dev/kmsg
+  printf 'You can reboot on current master dataset to fix the issue\n' > /dev/kmsg
+}
+
+# Handle revert so that zsys prepares all datasets as expected.
+initzsys() {
+  if [ ! -x @sbindir@/zsysd ]; then
+    return
+  fi
+
+  # Non ZFS system
+  if ! grep -q "root=ZFS=" /proc/cmdline; then
+    return
+  fi
+
+  # If we boot on the same dataset than last time, assume we don’t need to do anything as the cache file will only
+  # import desired pools.
+  bootds="$(sed -e 's/.*root=ZFS=\([^ ]\+\).*/\1/' /proc/cmdline)"
+  if grep -Eq "${bootds}\s+/\s+on" "${FSLIST}/"*; then
+      return
+  fi
+
+  # If we get here: we are reverting. Let zsys handle it
+  trap drop_emergency_on_failure EXIT INT QUIT ABRT PIPE TERM
+
+  exec 3>&1 1>"${errfile}"
+  exec 4>&2 2>&1
+
+  zsys_revert_failed=1
+  # Import and list previously imported pools for zsys
+  if [ -f "${ZPOOL_CACHE}" ]; then
+    @sbindir@/zpool import -c "${ZPOOL_CACHE}" -aN
+  # As a best effort, import all available pools, hoping there is no conflict.
+  else
+    echo "We had to search for all available pools because ${ZPOOL_CACHE} doesn't exist. To avoid this, create a zpool cache file."
+    @sbindir@/zpool import -aN
+  fi
+
+  @sbindir@/zsysd boot-prepare >"${errfile}"
+
+  # If FSLIST is empty, populate with all imported pools
+  if [ -z "$(ls -A ${FSLIST})" ]; then
+    @sbindir@/zpool list -H | cut -f1 | xargs -I{} touch ${FSLIST}/{}
+  fi
+
+  # Refresh zfs list cache
+  for cachefile in "${FSLIST}/"* ; do
+    pool=`basename ${cachefile}`
+    @sbindir@/zfs list -H -t filesystem -o "${PROPS}" -r "${pool}" >"${cachefile}"
+  done
+
+  exec 1>&3 3>&-
+  exec 2>&4 4>&-
+  zsys_revert_failed=0
+  rm "${errfile}"
+}
+
+initzsys
+
 # Feed each line into process_line
 for cachefile in "${FSLIST}/"* ; do
+  # Disable glob expansion to protect against special characters when parsing.
+  set -f
   while read -r fs ; do
     process_line "${fs}"
   done < "${cachefile}"

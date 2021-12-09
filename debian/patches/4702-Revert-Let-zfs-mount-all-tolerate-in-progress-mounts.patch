@@ -1,0 +1,53 @@
+From d1b84da8c1a69c084f04b504beefe804591bca07 Mon Sep 17 00:00:00 2001
+From: Brian Behlendorf <behlendorf1@llnl.gov>
+Date: Tue, 26 May 2020 16:07:50 -0700
+Subject: [PATCH] Revert "Let zfs mount all tolerate in-progress mounts"
+
+This reverts commit a9cd8bf which introduced a segfault when running
+`zfs mount -a` multiple times when there are mountpoints which are
+not empty.  This segfault is now seen frequently by the CI after
+the mount code was updated to directly call mount(2).
+
+The original reason this logic was added is described in #8881.
+Since then the systemd `zfs-share.target` has been updated to run
+"After" the `zfs-mount.server` which should avoid this issue.
+
+Reviewed-by: Don Brady <don.brady@delphix.com>
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Closes #9560
+Closes #10364
+---
+ cmd/zfs/zfs_main.c | 19 +------------------
+ 1 file changed, 1 insertion(+), 18 deletions(-)
+
+Index: zfs-linux-0.8.3/cmd/zfs/zfs_main.c
+===================================================================
+--- zfs-linux-0.8.3.orig/cmd/zfs/zfs_main.c
++++ zfs-linux-0.8.3/cmd/zfs/zfs_main.c
+@@ -6447,25 +6447,8 @@ share_mount_one(zfs_handle_t *zhp, int o
+ 			return (1);
+ 		}
+ 
+-		if (zfs_mount(zhp, options, flags) != 0) {
+-			/*
+-			 * Check if a mount sneaked in after we checked
+-			 */
+-			if (!explicit &&
+-			    libzfs_errno(g_zfs) == EZFS_MOUNTFAILED) {
+-				usleep(10 * MILLISEC);
+-				libzfs_mnttab_cache(g_zfs, B_FALSE);
+-
+-				if (zfs_is_mounted(zhp, NULL)) {
+-					(void) fprintf(stderr, gettext(
+-					    "Ignoring previous 'already "
+-					    "mounted' error for '%s'\n"),
+-					    zfs_get_name(zhp));
+-					return (0);
+-				}
+-			}
++		if (zfs_mount(zhp, options, flags) != 0)
+ 			return (1);
+-		}
+ 		break;
+ 	}
+ 

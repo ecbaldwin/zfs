@@ -1,0 +1,56 @@
+From 46cd180400093965271820d34fa1071f9769a0fb Mon Sep 17 00:00:00 2001
+From: Juerg Haefliger <juergh@canonical.com>
+Date: Tue, 18 Aug 2020 10:52:25 +0200
+Subject: [PATCH] Fix DKMS build on arm64 with PREEMPTION and BLK_CGROUP
+ enabled
+
+With PREEMPTION=y and BLK_CGROUP=y preempt_schedule_notrace() is being
+used on arm64 which is a GPL-only function and hence the build of the
+DKMS kernel module fails.
+
+'Fix' that by redefining preempt_schedule_notrace() to preempt_schedule()
+which should be safe as long as tracing is not used.
+
+Signed-off-by: Juerg Haefliger <juergh@canonical.com>
+---
+ module/zfs/vdev_disk.c  |  2 ++
+ module/zfs/zfs_compat.h | 14 ++++++++++++++
+ 2 files changed, 16 insertions(+)
+ create mode 100644 module/zfs/zfs_compat.h
+
+diff --git a/module/zfs/vdev_disk.c b/module/zfs/vdev_disk.c
+index 8544bb8ffb6f..2a7096a6436d 100644
+--- a/module/zfs/vdev_disk.c
++++ b/module/zfs/vdev_disk.c
+@@ -26,6 +26,8 @@
+  * Copyright (c) 2012, 2019 by Delphix. All rights reserved.
+  */
+ 
++#include "zfs_compat.h"
++
+ #include <sys/zfs_context.h>
+ #include <sys/spa_impl.h>
+ #include <sys/vdev_disk.h>
+diff --git a/module/zfs/zfs_compat.h b/module/zfs/zfs_compat.h
+new file mode 100644
+index 000000000000..6ef26f436f3c
+--- /dev/null
++++ b/module/zfs/zfs_compat.h
+@@ -0,0 +1,14 @@
++#ifndef _ZFS_COMPAT_H_
++#define _ZFS_COMPAT_H_
++
++/*
++ * preempt_schedule_notrace is GPL-only which breaks the ZFS build, so
++ * replace it with preempt_schedule under the following condition:
++*/
++#if defined(CONFIG_ARM64) && \
++    defined(CONFIG_PREEMPTION) && \
++    defined(CONFIG_BLK_CGROUP)
++#define preempt_schedule_notrace(x) preempt_schedule(x)
++#endif
++
++#endif /* _ZFS_COMPAT_H_ */
+-- 
+2.25.1
+
