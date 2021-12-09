@@ -1,3 +1,9 @@
+zfs-linux (0.8.3-1ubuntu12.13.cascade1) focal; urgency=medium
+
+  * working on exposing the checksums as an xattr
+
+ -- Carl Baldwin <carl@ecbaldwin.net>  Tue, 07 Dec 2021 16:33:32 -0700
+
 zfs-linux (0.8.3-1ubuntu12.13) focal; urgency=medium
 
   * Fix zfs receive -s when using ZFS 2.x kernel drivers (LP: #1939177)
