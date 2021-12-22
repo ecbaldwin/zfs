@@ -233,6 +233,8 @@ zpl_xattr_list_sa(xattr_filldir_t *xf)
 	return (0);
 }
 
+#define XATTR_NAME_ESSENCE "user.essence"
+
 ssize_t
 zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 {
@@ -250,13 +252,12 @@ zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 	rw_enter(&zp->z_xattr_lock, RW_READER);
 
 	/* When xf.buf is NULL only calculate the required size. */
-	char *name = "user.essence";
-	int name_len = strlen(name);
+	int name_len = strlen(XATTR_NAME_ESSENCE);
 	if (xf.buf) {
 		if (xf.offset + name_len + 1 > xf.size)
 			return (-ERANGE);
 
-		memcpy(xf.buf + xf.offset, name, name_len);
+		memcpy(xf.buf + xf.offset, XATTR_NAME_ESSENCE, name_len);
 		xf.buf[xf.offset + name_len] = '\0';
 	}
 
