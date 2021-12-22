@@ -1,0 +1,9 @@
+#!/bin/bash -ex
+
+cd $(dirname $0)
+
+[ -w / ] || exec sudo $0 ${1+"$@"}
+
+dkms remove zfs/0.8.3 --all || true
+dkms build  zfs/0.8.3
+dkms install --force zfs/0.8.3
