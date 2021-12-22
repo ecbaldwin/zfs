@@ -233,7 +233,8 @@ zpl_xattr_list_sa(xattr_filldir_t *xf)
 	return (0);
 }
 
-#define XATTR_NAME_ESSENCE "user.essence"
+// TODO(Carl) This should probably be moved out of the user. namespace. But, to what?
+#define XATTR_ESSENCE_NAME "user.essence"
 
 ssize_t
 zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
@@ -243,7 +244,7 @@ zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 	xattr_filldir_t xf = { buffer_size, 0, buffer, dentry };
 	cred_t *cr = CRED();
 	fstrans_cookie_t cookie;
-	int error = 0;
+	int error = 0, name_len;
 
 	crhold(cr);
 	cookie = spl_fstrans_mark();
@@ -252,12 +253,12 @@ zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 	rw_enter(&zp->z_xattr_lock, RW_READER);
 
 	/* When xf.buf is NULL only calculate the required size. */
-	int name_len = strlen(XATTR_NAME_ESSENCE);
+	name_len = strlen(XATTR_ESSENCE_NAME);
 	if (xf.buf) {
 		if (xf.offset + name_len + 1 > xf.size)
 			return (-ERANGE);
 
-		memcpy(xf.buf + xf.offset, XATTR_NAME_ESSENCE, name_len);
+		memcpy(xf.buf + xf.offset, XATTR_ESSENCE_NAME, name_len);
 		xf.buf[xf.offset + name_len] = '\0';
 	}
 
@@ -366,8 +367,22 @@ __zpl_xattr_get(struct inode *ip, const char *name, void *value, size_t size,
 	znode_t *zp = ITOZ(ip);
 	zfsvfs_t *zfsvfs = ZTOZSB(zp);
 	int error;
+	char *xattr_value;
 
 	ASSERT(RW_LOCK_HELD(&zp->z_xattr_lock));
+
+	if (0 == strcmp(name, XATTR_ESSENCE_NAME)) {
+		// Carl, Now, drill into zfs and get something that can be an essence value
+		xattr_value = "hello world, make me an essence value.";
+		error = strlen(xattr_value);
+		if (size != 0) {
+			if (size < error) {
+				return (-ERANGE);
+			}
+			memcpy(value, xattr_value, error);
+		}
+		goto out;
+	}
 
 	if (zfsvfs->z_use_sa && zp->z_is_sa) {
 		error = zpl_xattr_get_sa(ip, name, value, size);
